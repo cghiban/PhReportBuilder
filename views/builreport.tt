@@ -1,0 +1,56 @@
+
+<style type="text/css">
+label {
+	width: 200px;
+	display: block;
+	float: left;
+	text-align: right;
+	padding-right: 3px;
+}
+input {
+	width: 200px;
+}
+
+div#leftside {
+	width: 410px;
+	float: left;
+}
+div#rightside {
+	float: left;
+	padding-left: 20px;
+	vertical-align: top;
+}
+
+</style>
+<h2>Build Ph-report</h2>
+<div id="leftside">
+<form method="post" action="/buildreport" target="aha">
+	<div>
+		<label>Data dir: </label>
+		<input type="text" name="d" value="<% d %>" />
+	</div>
+	<div>
+		<label>Inspect output file: </label>
+		<input type="text" name="r" value="<% r %>" />
+	</div>
+	<div>
+		<label>Trie database: </label>
+		<input type="text" name="t" value="<% t %>" />
+	</div>
+	<div>
+		<label>Filter ppm: </label>
+		<input type="text" name="f" maxlength="2" value="<% f %>" style="width: 25px;"/>
+	</div>
+	<div>
+		<label>Inspect output dir: </label>
+		<input type="text" name="o" value="<% o %>" />
+	</div>
+	<label>&nbsp;</label>
+	<input type="submit" value="Build" />
+</form>
+</div>
+<div id="rightside">
+	right...
+	<div></div>
+	<iframe id="aha" name="aha" src="about:blank" width="400px" border="0" />
+</div>
