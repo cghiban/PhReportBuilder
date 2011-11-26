@@ -1,14 +1,14 @@
 #!/usr/bin/perl
 
 use common::sense;
-#use strict;	
+use strict;	
 use File::Spec ();
 use File::Copy qw/copy/;
 use IO::File ();
 use IO::Dir ();
 use Getopt::Long;
 use Pod::Usage;
-use Term::ANSIColor;
+#use Term::ANSIColor;
 use Cwd qw/getcwd abs_path/;
 use File::Basename;
 use Capture::Tiny qw/capture/;
@@ -96,7 +96,7 @@ my $err = 0;
 my $work_dir = $DIR;
 $work_dir =~ s|/*$||;
 
-print color 'bold red';
+#print color 'bold red';
 
 unless ( $work_dir ) {
 	print "Data dir is missing.\n";
@@ -150,7 +150,7 @@ if (defined $filter_ppm && $filter_ppm) {
 }
 $filter_ppm = $filter_ppm_default unless ($filter_ppm);
 
-print color 'reset';
+#print color 'reset';
 
 if ($err) {
 	print "\n";
@@ -160,7 +160,7 @@ if ($err) {
 
 unless ( -d $OUTDIR) {
 	mkdir $OUTDIR or do {
-		print STDERR "ERROR: Can't create output directory for the report: ", $!, $/;
+		print "ERROR: Can't create output directory for the report: ", $!, $/;
 		exit 1;
 	};
 }
@@ -199,7 +199,7 @@ sub main {
 	#print "$OUTDIR\n---------\n";
 	#return;
 	my @pfnames = get_pfile_names($phos_dir);
-	print "phos files # ", scalar @pfnames, $/;
+	print "phos files # ", scalar @pfnames, $/ unless $QUIET;
 
 	if (@pfnames) {
 		
@@ -221,26 +221,6 @@ sub main {
 		#print STDERR Dumper($mzXMLs{'012010_tes_1.mzXML'}), $/;
 		#print STDERR Dumper(\%mzXMLs), $/;
 		
-		$hk_dir = 0;
-		#$hk_dir ||= run_hardklore(keys %mzXMLs);
-		#print "\nhardklor dir: ", $hk_dir, $/, $/;
-
-		if ($hk_dir && -d $hk_dir) {
-			print $hk_dir, $/;
-			my @fs = <$hk_dir/*.hk>;
-			
-			my $hk_file = 0;
-			if (my $fh = IO::File->new($hk_file) && 0) {
-				while (my $l = <$fh>) {
-					if ($l =~ /^S\t(\d+)\t/ && $scans{$1}) {
-						print $l, $/;
-					}
-				}
-			}
-		}
-		
-		#exit 0;
-		
 		my $rep_dir = File::Spec->catfile($OUTDIR, "report");
 		unless (mkdir $rep_dir) {
 			print "cwd: ", getcwd(), $/;
@@ -252,6 +232,8 @@ sub main {
 		unless ($html->open($report, 'w')) {
 			exit 1;
 		}
+
+		print "\nReport saved in: ", $report, "\n" x 2;
 		
 		print "\nFiltering out any annotation with ppm not in this interval: [$filter_ppm, -$filter_ppm].\n\n" unless $QUIET;
 		print $html "<html>\n<body>"
@@ -324,7 +306,6 @@ sub main {
 		}
 		print $html "</table>\n</body>\n</html>";
 
-		print "\nReport save in: ", $report, $/ x 3;
 	}
 }
 
@@ -334,7 +315,7 @@ sub main {
 sub get_pvalues {
 	my ($pv_path, $threshhold) = @_;
 	
-	print "\n** trashhold: ", $threshhold, $/;
+	print "\n** threshold: ", $threshhold, $/ unless $QUIET;
 	
 	# 0 SpectrumFile
 	# 1 Scan#
@@ -518,7 +499,6 @@ sub run_phos_loc {
 		};
 	};
 	print STDERR "Error in PhosphateLocalization:\n", $serr if ($serr && !$QUIET);
-	#print "cucu\n";
 	chdir $pwd;
 	return $phos_out;
 }

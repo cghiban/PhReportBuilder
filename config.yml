@@ -27,3 +27,8 @@ template: "simple"
 #     start_tag: '[%'
 #     end_tag:   '%]'
 
+appconf:
+  inspect_dir: "/home/cornel/tmp/inspect"
+  data_base_dir: "/home/cornel/tmp"
+  output_base_dir : "/home/cornel/work/perl/PhReportBuilder/public/output"
+  web_output_base_path : "/output"

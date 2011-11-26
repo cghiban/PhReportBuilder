@@ -24,7 +24,7 @@ div#rightside {
 </style>
 <h2>Build Ph-report</h2>
 <div id="leftside">
-<form method="post" action="/buildreport" target="aha">
+<form method="post" action="/buildreport" target="aha" id="forma1">
 	<div>
 		<label>Data dir: </label>
 		<input type="text" name="d" value="<% d %>" />
@@ -46,11 +46,10 @@ div#rightside {
 		<input type="text" name="o" value="<% o %>" />
 	</div>
 	<label>&nbsp;</label>
-	<input type="submit" value="Build" />
+	<input type="button" value="Build" onclick="this.style.display='none';var f=document.getElementById('forma1');document.getElementById('aha').src='about:blank';f.submit();"/>
 </form>
 </div>
 <div id="rightside">
-	right...
 	<div></div>
-	<iframe id="aha" name="aha" src="about:blank" width="400px" border="0" />
+	<iframe id="aha" name="aha" src="about:blank" width="500px" height="300px" border="0" />
 </div>
