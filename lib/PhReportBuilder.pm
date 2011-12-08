@@ -117,7 +117,7 @@ get '/xy' => sub {
 get qr{/browse/(.*)} => sub {
 
 	my $type = params->{t} || '';
-	unless ($type =~ /[td]/) {
+	unless ($type =~ /[fd]/) {
 		$type = '';
 	}
 
@@ -190,16 +190,11 @@ get qr{/browse/(.*)} => sub {
 						 'Please rename the file and reload the page!';
 			}
 
-			#if ($_->{name} =~ /\.(=?jpg|gif|png)/ && -e "$base_dir/$_->{name}") {
-			#	my ($x, $y) = imgsize($base_dir . '/'. $_->{name} );
-			#	$dimensions = "$x/$y";
-			#}
 			if ($show) {
 				$out .= "<li style=\"margin-left:10px\"><a href=\"javascript:void(1)\" " .
 						"onclick=\"javascript:";
 				$out .= $error  ? "alert('$error');\" />"
-						: "setFile('/$_->{name}', '/$th', '$_->{realsize}')\" />";
-				#$out .= "<img src=\"/$th\" width=\"72\" height=\"72\"/>&nbsp;" .
+						: "selectFile('$_->{name}')\" />";
 				$out .= "$_->{name}</a> ($_->{size})</li>";
 			}
 		}

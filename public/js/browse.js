@@ -15,6 +15,13 @@ function selectDir(dir) {
 	}
 }
 
+function selectFile(file) {
+	var o = window.opener;
+	if (o) {
+		o.document.getElementById('r').value = file;
+		window.close();
+	}
+}
 
 function doBuild() {
 	var out=document.getElementById('o');
