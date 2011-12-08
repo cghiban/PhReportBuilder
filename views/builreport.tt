@@ -34,26 +34,28 @@ div#rightside {
 <form method="post" action="/buildreport" target="aha" id="forma1">
 	<div>
 		<label>Data dir: </label>
-		<input type="text" name="d" value="<% d %>" />
+		<input type="text" name="d" id="d" value="<% d %>" />
+		<input type="button" value=".." title="Select directory" onclick="javascript:browse('/browse/?t=d');" />
 	</div>
 	<div>
 		<label>Inspect output file: </label>
-		<input type="text" name="r" value="<% r %>" /> <input type="button" value=".." title="Browse" onclick="javascript:browse('/browse/');" />
+		<input type="text" name="r" id="r" value="<% r %>" />
+		<input type="button" value=".." title="Select file" onclick="javascript:browse('/browse/?t=f');" />
 	</div>
 	<div>
 		<label>Trie database: </label>
-		<input type="text" name="t" value="<% t %>" />
+		<input type="text" name="t" id="t" value="<% t %>" />
 	</div>
 	<div>
 		<label>Filter ppm: </label>
-		<input type="text" name="f" maxlength="2" value="<% f %>" style="width: 25px;"/>
+		<input type="text" name="f" id="f" maxlength="2" value="<% f %>" style="width: 25px;"/>
 	</div>
 	<div>
 		<label>Inspect output dir: </label>
-		<input type="text" name="o" value="<% o %>" />
+		<input type="text" name="o" id="o" value="<% o %>" />
 	</div>
 	<label>&nbsp;</label>
-	<input type="button" class="submit" value="Build" onclick="this.style.display='none';var f=document.getElementById('forma1');document.getElementById('aha').src='about:blank';f.submit();"/>
+	<input type="button" class="submit" id="build_btn" value="Build" onclick="javascript:doBuild();" />
 </form>
 </div>
 <div id="rightside">

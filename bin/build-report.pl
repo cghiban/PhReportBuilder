@@ -74,7 +74,7 @@ python PhosphateLocalization.py
 
 my $PROTON_MASS = 1.007825;
 my ($DIR, $OUTDIR, $INPUT, $TRIE, $PV_FILE, $QUIET, $HELP, $hk_dir, $filter_ppm);
-my ($threshhold, $INSPECT_HOME, $filter_ppm_default) = (0.05, "/usr/local/inspect", 10);
+my ($threshhold, $INSPECT_HOME, $filter_ppm_default) = (0.05, "/usr/local/inspect", 20);
 
 GetOptions(
   'dir|d=s'	=> \$DIR,
@@ -134,7 +134,7 @@ unless ( $TRIE ) {
 }
 
 unless ( $OUTDIR ) {
-	$OUTDIR = File::Spec->catfile($DIR, "output");
+	$OUTDIR = File::Spec->catfile($DIR, "output") if $DIR;
 }
 
 if ( $PV_FILE && !-f $PV_FILE) {
@@ -167,7 +167,9 @@ unless ( -d $OUTDIR) {
 
 
 #------------------------------------------------
-main ();
+main();
+
+exit 0;
 
 # TODO
 # get MQScore values din *phos*.html
@@ -284,7 +286,7 @@ sub main {
 				#print "YY: ", $pvkey,"/$formula: ", $mzXMLs{$mzXML}->{$scan}, $/;
 				my $lnk = generate_report($pf, $extra_data);
 				#for my $pv (@{$pvalues->{$pvkey}}) {
-				my $ppm = ($computed - $mzXMLs{$mzXML}->{$scan}) * 1e6 / $computed;
+				my $ppm = sprintf("%.2f", ($computed - $mzXMLs{$mzXML}->{$scan}) * 1e6 / $computed);
 
 				next if $filter_ppm && ($ppm > $filter_ppm || $ppm < -$filter_ppm);
 
@@ -407,7 +409,7 @@ sub generate_report {
 	my $src_png_file = File::Spec->catfile($OUTDIR, "phos_out", $png_file);
 	
 	copy($src_png_file, $target_png_file) or 
-		print STDERR "* ERROR: Can't copy image to [$src_png_file]\n";
+		print "* ERROR: Can't copy image to [$src_png_file]\n";
 	
 	return sprintf("%s.html", $pattern);
 }
@@ -498,7 +500,7 @@ sub run_phos_loc {
 			exit 1;
 		};
 	};
-	print STDERR "Error in PhosphateLocalization:\n", $serr if ($serr && !$QUIET);
+	print "Error in PhosphateLocalization:\n", $serr if ($serr && !$QUIET);
 	chdir $pwd;
 	return $phos_out;
 }

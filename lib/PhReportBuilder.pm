@@ -5,9 +5,9 @@ use strict;
 
 use File::Basename qw/basename/;
 use FindBin qw($Bin);
-use File::Spec;
-use Capture::Tiny qw/capture/;
+use File::Spec ();
 use Cwd qw/getcwd/;
+use File::Slurp qw/read_file/;
 use Data::Dumper;
 
 our $VERSION = '0.1';
@@ -47,29 +47,44 @@ any ['get', 'post'] => '/buildreport' => sub {
 			return join " ", map {"<div>$_</div>"} @$errs;
 		}
 		
-		my ($out, $err) = ('', '');
-		#my ($out, $err) = capture {
-			my $pwd = getcwd();
-			mkdir $o;
-			chdir $o;
-			system(join (" ", 'perl', "$Bin/build-report.pl",
-						'-d', $d,
-						'-r', $r,
-						'-t', $t,
-						'-o', $o,
-						'-f', $f,
-						'-i', $inspect_dir,
-					) . " 2>&1"
-						#'-p', "$out_base/demo16/PVALUED_output.txt",
-					) or do {
-						print "Error building report: ", $?, $/;
-					};
-			chdir $pwd;
-		#};
+		my $pwd = getcwd();
+		mkdir $o;
+		chdir $o;
+
+		# handle the stdin/out
+		my ($stdout, $stderr) = ('stdout.txt', 'stderr.txt');
+
+		open OLDOUT,'>&', \*STDOUT or die "Can't dup STDOUT: $!";
+		open OLDERR, '>&', \*STDERR or die "Can't dup STDERR: $!";
+		open STDOUT, '>', $stdout
+					or die "Can't dup STDOUT: $o: $!";
+		open STDERR, '>', $stderr
+					or die "Can't dup STDERR to $o: $!";
+
+		system ("$Bin/build-report.pl",
+					'-d', $d,
+					'-r', $r,
+					'-t', $t,
+					'-o', $o,
+					'-f', $f,
+					'-i', $inspect_dir,
+				);
+		my $exit_code = $?;
+
+		close STDOUT;
+		close STDERR;
+		open STDOUT, '>&', \*OLDOUT;
+		open STDERR, '>&', \*OLDERR;
+
+		my $out = read_file( $stdout ) ;
+		my $err = read_file( $stderr ) ;
+
+		chdir $pwd;
+
 		$o =~ s/$out_base/$web_output_base_path/;
-		return "<pre>$out\nDone</pre>"
-			. "<hr/><pre>$err</pre>"
-			. "<br/><a target=\"_blank\" href=\"$o/report/00-report.html\">view report</a>";
+		return "Done. "
+			. ($exit_code != -1 && $exit_code >> 8 == 0 ? "<br/><a target=\"_blank\" href=\"$o/report/00-report.html\">view report</a>" : "with errors ($exit_code)...")
+			. "<hr/><pre>$out\n$err</pre>";
 	}
 	else {
 		my @out_dirs = <$out_base/*>;
@@ -79,7 +94,7 @@ any ['get', 'post'] => '/buildreport' => sub {
 			r => "ph-report-data/all_output.txt",
 			t => "ph-report-data/uniprotKB_EcoliK12_bpv.RS.trie",
 			o => 'demo' . (1 + scalar @out_dirs),
-			f => 10,
+			f => 20,
 			cf => $cf,
 		};
 	}
@@ -96,11 +111,16 @@ get '/xy' => sub {
 
 get qr{/browse/(.*)} => sub {
 
+	my $type = params->{t} || '';
+	unless ($type =~ /[td]/) {
+		$type = '';
+	}
+
 	my ($arg) = splat;
 	$arg =~ s/([.\\])+/$1/g;
 	$arg =~ s|/+|/|g;
 
-	my $web_dir  = '';#DNALC::CMS::Config->getConfig('web_media_dir');
+	my $web_dir  = '';
 
 	my $cf = config->{appconf};
 	my $data_base_dir = $cf->{data_base_dir};
@@ -112,23 +132,18 @@ get qr{/browse/(.*)} => sub {
 			$topdir = '/' . ($1 || '');
 		}
 	}
+
 	my $regex = 0;
-	#if ($r->args && $r->args ne '') {
-	#	my $formats = DNALC::CMS::Config->getConfig('download_formats');
-	#	$regex =  $formats->{sprintf("%s", $r->args)}[2];
-	#}
 
 	my $out = "<html><head>" .
 			"<script type=\"text/javascript\" src=\"/js/browse.js\"></script>".
 			"</head><body>";
 
-	$out .= "<div>$topdir</div>";
+	#$out .= "<div>$type</div>";
 	$out .= "Location: <b>/DATA/" . ($arg || '') . "</b>\n<br>";
-	#if ($r->args && $r->args ne '') {
-	#        $out .= "Showing only <b>".sprintf("%s", $r->args)."</b> files.\n<br />";
-	#}
+
 	$out .= "<img src=\"/images/back.gif\" />" .
-			"<a href=\"javascript:void(0)\" onclick=\"goPath('/browse$topdir?')\">Parent directory</a><br/>";
+			"<a href=\"javascript:void(0)\" onclick=\"goPath('/browse$topdir?t=$type')\">Parent directory</a><br/>";
 
 	$arg =~ s/\/$// if defined $arg;
 
@@ -139,13 +154,17 @@ get qr{/browse/(.*)} => sub {
 	$out .= '<ul>';
 	foreach (sort @$d) {
 		$_ =~ s|^/||;
+		my $js_dir = $_;
+		$js_dir =~ s/'/\\'/g;
 		$out .= "<li style=\"list-style: none\">"
 			 .  "<img src=\"/images/folder.gif\" />"
-			 .	"<a href=\"javascript:void(0)\" onclick=\"goPath('/browse/$_/?')\">/$_</a>"
+			 .	"<a href=\"javascript:;\" onclick=\"goPath('/browse/$_/?t=$type')\">/$_</a>"
+			 . ($type eq "d" ? qq{ &nbsp; <input type="button" onclick="javascript:selectDir('$js_dir')" value="select" />}: '')
 			 . "</li>";
 	}
 
-	if (@$f) {
+	if ($type ne "d"){
+	 if (@$f) {
 		foreach (@$f) {
 			my $error = '';
 			my $web_media_dir = '';
@@ -180,8 +199,9 @@ get qr{/browse/(.*)} => sub {
 				$out .= "$_->{name}</a> ($_->{size})</li>";
 			}
 		}
-	} else {
-		$out .= '<li>No files</li>';
+	 } else {
+		$out .= '<li>No files found in this directory.</li>';
+	 }
 	}
 	$out .= "</ul>";
 
@@ -201,7 +221,7 @@ sub commify {
 sub _get_file_tree {
 
 	my ($base, $subdir) = @_;
-	print STDERR Dumper( \@_), $/;
+	#print STDERR Dumper( \@_), $/;
 
 	my @dirs  = ();
 	my @files = ();
@@ -280,7 +300,7 @@ sub validate_params {
 		}
 		$p{$_} = $full_path;
 	}
-	print STDERR Dumper( \%p), $/;
+	#print STDERR Dumper( \%p), $/;
 
 	return (\%p, \@errs);
 }

@@ -32,3 +32,4 @@ appconf:
   data_base_dir: "/home/cornel/tmp"
   output_base_dir : "/home/cornel/work/perl/PhReportBuilder/public/output"
   web_output_base_path : "/output"
+
