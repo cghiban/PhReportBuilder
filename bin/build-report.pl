@@ -27,15 +27,9 @@ build-report.pl - (runs and ) builds PhosphateLocalization report
                    --input|-r <inspect output>
                    --inspect_dir|-i <inspect home dir>
                    --triedb|-t <trie database>
-				   --filter-ppm|-f <integer> 
+                   --filter-ppm|-f <integer> 
                    --output|-o [report_output_dir]
                    --pv|-p [pvalue_file] # with this option PValue is not run
- or
- 
- # to build the report from existing PhosphateLocalization files:
- % build-report.pl --dir|-d <data_dir> 
-                   --pv|-p <pvalue_file> --build-report|-br 
-                   --output|-o <report_output_dir>
 
 =head1 DESCRIPTION
 

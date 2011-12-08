@@ -18,18 +18,19 @@ charset: "UTF-8"
 # simple: default and very basic template engine
 # template_toolkit: TT
 
-template: "simple"
+#template: "simple"
 
-# template: "template_toolkit"
-# engines:
-#   template_toolkit:
-#     encoding:  'utf8'
-#     start_tag: '[%'
-#     end_tag:   '%]'
+template: "template_toolkit"
+engines:
+    template_toolkit:
+      encoding:  'utf8'
+      start_tag: '<%'
+      end_tag:   '%>'
 
 appconf:
   inspect_dir: "/home/cornel/tmp/inspect"
   data_base_dir: "/home/cornel/tmp"
   output_base_dir : "/home/cornel/work/perl/PhReportBuilder/public/output"
   web_output_base_path : "/output"
+  triedb_dir: "/home/cornel/tmp/triedb"
 

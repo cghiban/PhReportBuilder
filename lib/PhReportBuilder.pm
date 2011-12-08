@@ -44,7 +44,8 @@ any ['get', 'post'] => '/buildreport' => sub {
 		my $web_output_base_path = $cf->{web_output_base_path};
 
 		if (@$errs) {
-			return join " ", map {"<div>$_</div>"} @$errs;
+			return join (" ", map {"<div>$_</div>"} @$errs) 
+				. q{<script type="text/javascript">parent.document.getElementById('build_btn').style.display='inline'</script>};
 		}
 		
 		my $pwd = getcwd();
@@ -84,15 +85,19 @@ any ['get', 'post'] => '/buildreport' => sub {
 		$o =~ s/$out_base/$web_output_base_path/;
 		return "Done. "
 			. ($exit_code != -1 && $exit_code >> 8 == 0 ? "<br/><a target=\"_blank\" href=\"$o/report/00-report.html\">view report</a>" : "with errors ($exit_code)...")
-			. "<hr/><pre>$out\n$err</pre>";
+			. "<hr/><pre>$out\n$err</pre>"
+			. ($exit_code >> 8 != 0 ? q{<script type="text/javascript">parent.document.getElementById('build_btn').style.display='inline'</script>} : '');
 	}
 	else {
+		my $triedb_dir = $cf->{triedb_dir};
+		my @dbs =  map { s|$triedb_dir/?||; $_ } <$triedb_dir/*trie>;
 		my @out_dirs = <$out_base/*>;
 		template 'builreport', {
 			#d => "$data_base_dir/ph-report-data",
 			d => "ph-report-data",
 			r => "ph-report-data/all_output.txt",
-			t => "ph-report-data/uniprotKB_EcoliK12_bpv.RS.trie",
+			#t => "ph-report-data/uniprotKB_EcoliK12_bpv.RS.trie",
+			trie_dbs => \@dbs,
 			o => 'demo' . (1 + scalar @out_dirs),
 			f => 20,
 			cf => $cf,
@@ -149,7 +154,6 @@ get qr{/browse/(.*)} => sub {
 
 	#print STDERR $data_base_dir, ' --'. $arg, $/;
 	my ($d, $f) = _get_file_tree($data_base_dir, $arg);
-	#print STDERR Dumper( $d), $/;
 
 	$out .= '<ul>';
 	foreach (sort @$d) {
@@ -221,7 +225,6 @@ sub commify {
 sub _get_file_tree {
 
 	my ($base, $subdir) = @_;
-	#print STDERR Dumper( \@_), $/;
 
 	my @dirs  = ();
 	my @files = ();
@@ -286,21 +289,25 @@ sub validate_params {
 
 	my $cf = config->{appconf};
 	my $data_base_dir = $cf->{data_base_dir};
+	my $triedb_dir = $cf->{triedb_dir};
 	my %errs = (
 			d => 'Data dir',
 			r => 'Input file (output from inspect)',
 			t => 'Trie DB',
 		);
 
-	for (qw/d r t/) {
+	for (qw/d r/) {
 		my $full_path = File::Spec->catfile($data_base_dir, $p{$_});
-		#if ( $p{$_} eq "" || !-e $full_path) {
 		unless ($p{$_} ne "" && -e $full_path) {
 			push @errs, "$errs{$_} not found!";
 		}
 		$p{$_} = $full_path;
 	}
-	#print STDERR Dumper( \%p), $/;
+	my $full_path = File::Spec->catfile($triedb_dir, $p{t});
+	unless ($p{t} ne "" && -e $full_path) {
+		push @errs, "$errs{t} not found!";
+	}
+	$p{t} = $full_path;
 
 	return (\%p, \@errs);
 }

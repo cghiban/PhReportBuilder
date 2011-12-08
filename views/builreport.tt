@@ -44,7 +44,13 @@ div#rightside {
 	</div>
 	<div>
 		<label>Trie database: </label>
-		<input type="text" name="t" id="t" value="<% t %>" />
+		<!-- <input type="text" name="t" id="t" value="<% t %>" /> -->
+		<select id="t" name="t">
+			<option value="">-= select trie db =-</option>
+		<% FOREACH db IN trie_dbs %>
+			<option value="<% db %>"><% db.remove('\.trie$') %></option>
+		<% END %>
+		</select>
 	</div>
 	<div>
 		<label>Filter ppm: </label>

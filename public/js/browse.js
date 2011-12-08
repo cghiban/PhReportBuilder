@@ -15,6 +15,7 @@ function selectDir(dir) {
 	}
 }
 
+
 function doBuild() {
 	var out=document.getElementById('o');
 	out.value = out.value.replace(/\s+$/g, '');
