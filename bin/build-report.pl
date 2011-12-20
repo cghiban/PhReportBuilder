@@ -235,6 +235,7 @@ sub main {
 		print $html "<html>\n<body>"
 			. "<table><tr>\n"
 			. "<td>Annotation</td>"
+			. "<td>PLS-Annotation</td>"
 			. "<td>Theoretical M</td>"
 			. "<td>Experimental M</td>"
 			. "<td>ppm</td>"
@@ -255,6 +256,7 @@ sub main {
 			if (defined $pvalues->{$pvkey}) {
 				my $mqscore = 0;
 				my $pfl_score = 0;
+				my $annotation = my $pls_annotation = $pvalues->{$pvkey}->[0]->[0];
 				my $pf_file = File::Spec->catfile($OUTDIR, "phos_out", $pf . ".verbose.txt");
 				if (my $mfh = IO::File->new($pf_file)) {
 					while (<$mfh>) {
@@ -264,28 +266,31 @@ sub main {
 						elsif (/^Phosphate Localization Score:\s*(\d+\.?\d*)/) {
 							$pfl_score = $1;
 						}
-						last if $mqscore && $pfl_score;
+						elsif (/^WARNING: Better annotation than input.\s+.*?\d,\s+(.*)$/) {
+							$pls_annotation = $1;
+						}
+						#last if $mqscore && $pfl_score;
 					}
 					$mfh->close;
 				}
 				#print STDERR "\tMSQ = $mqscore\n";
 				next if $mqscore < 1;
-				
-				#print join " - ", ($mzXML, $scan, sprintf("%s.%d", $mzXML, $scan)) ;
-				#print "\t", Dumper($pvalues->{sprintf("%s.%d", $mzXML, $scan)}), $/;
+
 				my $phos_num = $formula =~ s/phos|\+80\D//g;
 				my ($computed, $computed_verbose) = compute_mass($formula, $phos_num);
 				my $extra_data = '<strong>Experimental M</strong>: ' .  $mzXMLs{$mzXML}->{$scan} . "\n" .
 						'<strong>Computed M</strong>: '. $computed_verbose . "\n";
 				#print "YY: ", $pvkey,"/$formula: ", $mzXMLs{$mzXML}->{$scan}, $/;
-				my $lnk = generate_report($pf, $extra_data);
-				#for my $pv (@{$pvalues->{$pvkey}}) {
+				my $lnk = generate_report($pf, $extra_data, $annotation);
 				my $ppm = sprintf("%.2f", ($computed - $mzXMLs{$mzXML}->{$scan}) * 1e6 / $computed);
 
 				next if $filter_ppm && ($ppm > $filter_ppm || $ppm < -$filter_ppm);
 
-					print $html "<tr>"
-						. "<td>" . $pvalues->{$pvkey}->[0]->[0] . "</td>"
+				# search
+
+				print $html "<tr>"
+						. "<td>" . $annotation . "</td>"
+						. "<td>" . $pls_annotation . "</td>"
 						. "<td>$computed</td>"
 						. "<td>" . $mzXMLs{$mzXML}->{$scan} . "</td>"
 						. "<td> $ppm </td>"
@@ -323,13 +328,7 @@ sub get_pvalues {
 	if ($fh->open($pv_path)) {
 		while (<$fh>) {
 			my @lvalues = split /\t+/;
-			#print $lvalues[13], $/;
-			#next if $threshhold && $lvalues[13] < $threshhold;
-#next unless $lvalues[0] =~ /sf2_20.mzXML/;
 			$lvalues[0] =~ s|.*/||;
-			#print $lvalues[13], " > ", $threshhold, " = ", ($threshhold && $lvalues[13] < $threshhold), $/;
-			#print join ' ', @lvalues[0, 1, 2, 13], $/;
-			#push @pv, [@lvalues[0, 1, 2, 13]];
 			my $key = sprintf("%s.%d", @lvalues[0, 1]);
 			push @{$pv->{$key}}, [@lvalues[2, 13]];
 		}
@@ -344,7 +343,6 @@ sub get_pfile_names {
 	my ($pv_path) = @_;
 
 	my @names = ();
-	#print $pv_path, $/;
 	my $d = IO::Dir->new($pv_path);
 	if (defined $d) {
 		while (defined($_ = $d->read)) {
@@ -363,7 +361,7 @@ sub get_pfile_names {
 #------------------------------------------------
 #
 sub generate_report {
-	my ($pattern, $extra_data) = @_;
+	my ($pattern, $extra_data, $annotation) = @_;
 	
 	my $data_file = File::Spec->catfile($OUTDIR, "phos_out", sprintf("%s.verbose.txt", $pattern));
 	my $png_file = sprintf("%s.png", $pattern);
@@ -385,6 +383,16 @@ sub generate_report {
 	}
 	return unless $data;
 	$extra_data ||= "\n";
+
+	my $fasta = $TRIE;
+	$fasta =~ s/\.trie$/.fasta/;
+
+	if (-f $fasta) {
+		$extra_data .= "\n" . run_fasta36($annotation, $fasta);
+	}
+	else {
+		print STDERR "No fasta file found!!", $/;
+	}
 
 	# create the html_file
 	$fh = IO::File->new($rep_details, 'w');
@@ -645,4 +653,64 @@ sub run_hardklore {
 			exit 1;
 		};
 	return $hk_dir;
+}
+
+sub run_fasta36 {
+	my ($annotation, $fasta_file) = @_;
+
+	my $query = File::Spec->catfile($OUTDIR, "seq.fa");
+	my $out_search = File::Spec->catfile($OUTDIR, "outsrc.txt");
+
+	my $fh = IO::File->new;
+	if ($fh->open($query, 'w')) {
+		my $aa = $annotation;
+		$aa =~ s/phos//g;
+		print $fh ">seq1\n";
+		print $fh $aa, "\n";
+	}
+	my @args = ('/usr/local/fasta36/bin/fasts36',
+			'-d', 3,
+			$query,
+			$fasta_file
+		);
+	my ($sout, $serr) = capture {
+		system (join(' ', @args) . " > $out_search") == 0 or do {
+			print STDERR "ERROR: fasts36: ", $?, $/;
+			return;
+		};
+	};
+	print STDERR  "run_fasta36: ", $serr, $/ if $serr;
+
+	return parse_fasta36_output($out_search);
+}
+
+sub parse_fasta36_output {
+	my ($file) = @_;
+	my ($out, $grab_all, $seq, $re) = ('', 0);
+	my $in = IO::File->new($file);
+	if ($in) {
+		while (my $l = <$in>) {
+			if ($l =~ /^The best scores are:\s+/) {
+				$out .= $l;
+				my $line = <$in>;
+				$out .= $line;
+				($seq) = $line =~ m/^(.*?)\s+/;
+				$seq =~ s/\|/\\\|/g;
+				$re = qr/^>>$seq/ if $seq;
+			}
+			elsif (defined $re && $l =~ /^>>/) {
+				if ($l =~ /$re/) {
+					$grab_all = 1;
+					$out .= "\n" . $l;
+				}
+				else {
+					$grab_all = 0;
+				}
+			}
+			elsif ($grab_all) {
+				$out .= $l;
+			}
+		}
+	}
+	return $out;
 }
