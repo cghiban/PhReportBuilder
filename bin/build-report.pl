@@ -681,22 +681,31 @@ sub run_fasta36 {
 	};
 	print STDERR  "run_fasta36: ", $serr, $/ if $serr;
 
-	return parse_fasta36_output($out_search);
+	return parse_fasta36_output($out_search, $annotation);
 }
 
+# extracts the alignment and it indicates where the phosphorilation occured
+#
 sub parse_fasta36_output {
-	my ($file) = @_;
-	my ($out, $grab_all, $seq, $re) = ('', 0);
+	my ($file, $pep) = @_;
+	my ($out, $grab_all, $extra_char, $seq, $re) = ('', 0, 0);
+
+	# extract the 1st alignment (with the best score?!)
+	#
 	my $in = IO::File->new($file);
 	if ($in) {
 		while (my $l = <$in>) {
+			$l =~ s/\|//; # replace the 1st encounter of |
 			if ($l =~ /^The best scores are:\s+/) {
 				$out .= $l;
 				my $line = <$in>;
-				$out .= $line;
 				($seq) = $line =~ m/^(.*?)\s+/;
-				$seq =~ s/\|/\\\|/g;
-				$re = qr/^>>$seq/ if $seq;
+				if ($seq) {
+					$extra_char = $seq =~ s/\|//; # replace the 1st encounter of |
+					$seq = substr $seq, 0, 5;
+					$re = qr/^>>$seq/;
+				}
+				$out .= $line;
 			}
 			elsif (defined $re && $l =~ /^>>/) {
 				if ($l =~ /$re/) {
@@ -708,9 +717,64 @@ sub parse_fasta36_output {
 				}
 			}
 			elsif ($grab_all) {
+				if ($extra_char) {
+					$l =~ s/^$seq\s+/$seq  /;
+				}
 				$out .= $l;
 			}
 		}
 	}
+
+	#----------
+	# compute the "phos" position so we mark it in the alignment
+	#
+	$pep =~ s/\.//g;
+	my @phos_positions = ();
+	my @xxphos_positions = ();
+	my $index = 0;
+	while((my $p = index($pep, 'phos', $index)) > 0) {
+		push @phos_positions, $p;
+		push @xxphos_positions, $p - $#phos_positions * 4; #4 == length("phos")
+		$index = $p + 1;
+	}
+	#----------
+
+	my ($area, $x) = $out =~ m/Smith-.*?overlap \(.*\)\n\n(.*)\n+/sm;
+	my $area_copy = $area;
+
+	my @phos_indexes = ();
+
+	my @seq1 = ($area =~ /seq1(\s+[A-Z]+)/g);
+	my $prev_pep_len = 0;
+	my $added = 0;
+	for my $pep (@seq1) {
+		my $spaces = $pep =~ s/\s//g;
+		my $pep_copy = $pep;
+		for my $poz (@xxphos_positions) {
+			my $ndx = $poz + $added - $prev_pep_len;
+			next if length($pep) < $ndx;
+			substr $pep, $ndx, 0, "+";
+			push @phos_indexes, $ndx;
+			$added++;
+		}
+		my $xx = 0;
+		while ($xx++ < $added) {
+			shift @xxphos_positions;
+		}
+		$prev_pep_len += length $pep;
+		$area_copy =~ s/$pep_copy/$pep/;
+		while (my $ndx = shift @phos_indexes) {
+			$area_copy =~ s/(    \s{$spaces})([+:]{$ndx})(.+)/$1$2+$3/;
+			#$area_copy =~ s/(    \s{$spaces})([+:]{$ndx})/$1$2+/;
+			my $sec_pos = $spaces + $ndx - 3;
+			if ($area_copy =~ /^$seq/m) {
+				$area_copy =~ s/^($seq\s+)([A-Z+]{$sec_pos})/$1$2+/m;
+			}
+		}
+	}
+
+	$out =~ s/(Smith-.*?overlap \(.*\)\n\n).*\n\n/$1$area_copy/sm;
 	return $out;
 }
+
+
