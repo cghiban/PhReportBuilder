@@ -286,7 +286,7 @@ sub main {
 
 				next if $filter_ppm && ($ppm > $filter_ppm || $ppm < -$filter_ppm);
 
-				# search
+				$pls_annotation = $annotation if $pfl_score <= 7;
 
 				print $html "<tr>"
 						. "<td>" . $annotation . "</td>"
@@ -300,8 +300,6 @@ sub main {
 						. "<td><a href=\"$lnk\">$scan</a></td>"
 						. "<td>" . sprintf("%.07g", $pvalues->{$pvkey}->[0]->[1]) . "</td>"
 						. "</tr>";
-				#}
-				
 				#last;
 			}
 		}
